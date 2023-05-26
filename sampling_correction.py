@@ -48,32 +48,34 @@ class Resampler:
     def __init__(self, target_dataset: pd.DataFrame = None, reference_dataset: pd.DataFrame = None) -> None:
         pass
 
-    def train_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list) -> None:
+    def train_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list, measure_impurity=False) -> None:
         #train initial decision tree
         random_state = 100
         tree = DecisionTreeClassifier.fit(dataset[reference_cols], dataset[target_col], random_state=random_state, min_impurity_decrease=0.01)
-        self.tree = tree
+        self.dt = tree
 
-        #evaluate impurity reduction by decision tree
-        start_impurity, end_impurity = self.evaluate_dt(dataset, target_col, reference_cols)
-        self.start_impurity = start_impurity
-        self.end_impurity = end_impurity
-        print('starting Gini impurity:', start_impurity)
-        print('ending Gini impurity:', end_impurity)
+        #obtain probability mass functions of leaf nodes
+        self.leaf_node_pmfs = node_distribution(self.dt, dataset, target_col, reference_cols)
 
-    def evaluate_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list) -> None:
-        #store tree evaluation methods in dictionary/JSON style
-        self.tree_eval = {}
+        if measure_impurity:
+            #evaluate impurity reduction by decision tree
+            start_impurity, end_impurity = self.evaluate_dt(dataset, target_col, reference_cols)
+            self.start_impurity = start_impurity
+            self.end_impurity = end_impurity
+            print('starting Gini impurity:', start_impurity)
+            print('ending Gini impurity:', end_impurity)
 
-        #compute initial gini impurity of target col
+    def evaluate_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list) -> tuple:
         start_impurity = impurity_from_pd_series(dataset[target_col])
-
         end_impurity = impurity_full_dt(self.tree, dataset, reference_cols)
 
         return start_impurity, end_impurity
     
-    def resample_from_dataset(self):
-        pass
+    def resample_from_dataset(self, reference_dataset: pd.DataFrame, orig_reference_cols: list) -> pd.DataFrame:
+        reference_dataset['node_id'] = self.dt.apply(reference_dataset[orig_reference_cols])
+        reference_dataset['pred_target'] = reference_dataset['node_id'].apply(lambda x: mapped_pmf_sampling(x, self.leaf_node_pmfs))
+
+        return reference_dataset
 
     def resample_from_descriptive_stats(self):
         pass
