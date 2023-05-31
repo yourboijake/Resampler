@@ -43,6 +43,7 @@ import pandas as pd
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
 from utils import *
+from functools import reduce
 
 class Resampler:
     def __init__(self, target_dataset: pd.DataFrame = None, reference_dataset: pd.DataFrame = None) -> None:
@@ -80,3 +81,19 @@ class Resampler:
     def resample_from_descriptive_stats(self):
         pass
 
+    #returns tuple of pd.Series: mean of % of total for each class, and std dev of % of total for each class
+    def monte_carlo_from_dataset(self, reference_dataset: pd.DataFrame, orig_reference_cols: list, iterations: int = 100) -> tuple:
+        prob_df_list = []
+        for i in range(iterations):
+            prob_df = self.resample_from_dataset(reference_dataset, orig_reference_cols)['pred_target'].value_counts().reset_index()
+            prob_df_list.append(prob_df)
+        
+        prob_df_merge = reduce(lambda left, right: pd.merge(left , right, on = ["index"], how = "outer"), data_list)
+        prob_df_merge = prob_df_merge.T
+        prob_df_merge_mean = prob_df_merge.mean()
+        prob_df_merge_std = prob_df_merge.std()
+
+        return prob_df_merge_mean.T, prob_df_merge_std.T
+
+    def monte_carlo_from_descriptive_stats(self):
+        pass
