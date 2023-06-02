@@ -78,8 +78,16 @@ class Resampler:
 
         return reference_dataset
 
-    def resample_from_descriptive_stats(self):
-        pass
+    def resample_from_descriptive_stats(self, dist_dict: dict, orig_reference_cols: list, sample_size: int = 10000) -> pd.DataFrame:
+        synthetic_dataset = {}
+        for dist in dist_dict.keys():
+            synthetic_dataset[dist] = sample_from_descriptive_stats(dist, dist_dict[dist], sample_size)
+        
+        synthetic_df = pd.DataFrame(synthetic_dataset)
+        synthetic_df['node_id'] = self.dt.apply(synthetic_df[orig_reference_cols])
+        synthetic_df['pred_target'] = synthetic_df['node_id'].apply(lambda x: mapped_pmf_sampling(x, self.leaf_node_pmfs))        
+        
+        return synthetic_df
 
     #returns tuple of pd.Series: mean of % of total for each class, and std dev of % of total for each class
     def monte_carlo_from_dataset(self, reference_dataset: pd.DataFrame, orig_reference_cols: list, iterations: int = 100) -> tuple:
@@ -94,6 +102,3 @@ class Resampler:
         prob_df_merge_std = prob_df_merge.std()
 
         return prob_df_merge_mean.T, prob_df_merge_std.T
-
-    def monte_carlo_from_descriptive_stats(self):
-        pass
