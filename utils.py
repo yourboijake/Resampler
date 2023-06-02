@@ -61,3 +61,25 @@ def node_distribution(dt: DecisionTreeClassifier, dataset: pd.DataFrame, target_
     pmf_dict = {node: grouped_counts.perc.xs(node).to_dict() for node in grouped_counts.index.levels[0]}
 
     return pmf_dict
+
+'''
+function that accepts distribution, and key parameters, then returns x samples from that distribution
+
+supported distributions + parameters:
+- normal: [mean, std dev]
+- lognormal: [mean, std dev]
+- exponential: [lambda]
+- uniform: [min, max]
+- pmf: {value: probability}
+'''
+def sample_from_descriptive_stats(distribution_type: str, params: list, sample_size: int) -> np.array:
+    if distribution_type == 'normal':
+        return np.random.normal(loc=params[0], scale=params[1], size=sample_size)
+    elif distribution_type == 'lognormal':
+        return np.random.lognormal(mean=params[0], sigma=params[1], size=sample_size)
+    elif distribution_type == 'exponential':
+        return np.random.exponential(loc=params[0], size=sample_size)
+    elif distribution_type == 'uniform':
+        return np.random.uniform(low=params[0], high=params[1], size=sample_size)
+    elif distribution_type == 'pmf':
+        return np.array([sample_from_pmf(params) for i in range(sample_size)])
