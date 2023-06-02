@@ -102,6 +102,3 @@ class Resampler:
         prob_df_merge_std = prob_df_merge.std()
 
         return prob_df_merge_mean.T, prob_df_merge_std.T
-
-    def monte_carlo_from_descriptive_stats(self):
-        pass
