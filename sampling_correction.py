@@ -42,6 +42,7 @@ Methods:
 import pandas as pd
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import GridSearchCV
 from utils import *
 from functools import reduce
 
@@ -49,22 +50,24 @@ class Resampler:
     def __init__(self, target_dataset: pd.DataFrame = None, reference_dataset: pd.DataFrame = None) -> None:
         pass
 
-    def train_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list, measure_impurity=False) -> None:
-        #train initial decision tree
-        random_state = 100
-        tree = DecisionTreeClassifier.fit(dataset[reference_cols], dataset[target_col], random_state=random_state, min_impurity_decrease=0.01)
-        self.dt = tree
+    def train_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list) -> None:
+        #train initial decision tree using grid search CV
+        param_grid = {"max_depth": [5, None],
+                      "min_impurity_decrease": [0.0, 0.2]}
+        tree = GridSearchCV(DecisionTreeClassifier(), param_grid)
+        tree.fit(dataset[reference_cols], dataset[target_col])
+        self.dt = tree.best_estimator_
 
         #obtain probability mass functions of leaf nodes
         self.leaf_node_pmfs = node_distribution(self.dt, dataset, target_col, reference_cols)
 
-        if measure_impurity:
-            #evaluate impurity reduction by decision tree
-            start_impurity, end_impurity = self.evaluate_dt(dataset, target_col, reference_cols)
-            self.start_impurity = start_impurity
-            self.end_impurity = end_impurity
-            print('starting Gini impurity:', start_impurity)
-            print('ending Gini impurity:', end_impurity)
+        #evaluate impurity reduction by decision tree
+        start_impurity, end_impurity = self.evaluate_dt(dataset, target_col, reference_cols)
+        self.start_impurity = start_impurity
+        self.end_impurity = end_impurity
+        print('starting Gini impurity:', start_impurity)
+        print('ending Gini impurity:', end_impurity)
+        print("mean accuracy of resulting DTC on full dataset:", self.df.score(dataset[reference_cols], dataset[target_col]))
 
     def evaluate_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list) -> tuple:
         start_impurity = impurity_from_pd_series(dataset[target_col])
