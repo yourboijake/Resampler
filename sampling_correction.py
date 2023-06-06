@@ -99,17 +99,19 @@ class Resampler:
 
     #returns tuple of pd.Series: mean of % of total for each class, and std dev of % of total for each class
     def monte_carlo_from_dataset(self, reference_dataset: pd.DataFrame, orig_reference_cols: list, iterations: int = 100) -> tuple:
-        prob_df_list = []
-        for i in range(iterations):
-            prob_dictionary = dict(self.resample_from_dataset(reference_dataset, orig_reference_cols)['pred_target'].value_counts(normalize=True))
-            #prob_coll = Counter(prob_dictionary)
-            prob_df_list.append(prob_dictionary)
-        
-        return prob_df_list
-        
-        prob_df_final = reduce(lambda left, right: left + right, prob_df_list)
-        prob_df_merge = prob_df_merge.T
-        prob_df_merge_mean = prob_df_merge.mean()
-        prob_df_merge_std = prob_df_merge.std()
+        prob_dict = {}
+        for i in range(1, iterations):
+            iter_dict = dict(self.resample_from_dataset(reference_dataset, orig_reference_cols)['pred_target'].value_counts(normalize=True))
+            for k, v in enumerate(iter_dict):
+                if k not in prob_dict.keys():
+                    prob_dict[k] = [v]
+                else:
+                    prob_dict[k].append(v)
 
-        return prob_df_merge_mean.T, prob_df_merge_std.T
+        for k, v in enumerate(prob_dict):
+            prob_dict[k] = np.array(v)
+
+        prob_dict_mean = dict(zip(prob_dict.keys(), [np.mean(v) for v in prob_dict.values()]))
+        prob_dict_std = dict(zip(prob_dict.keys(), [np.std(v) for v in prob_dict.values()]))
+
+        return prob_dict_mean, prob_dict_std
