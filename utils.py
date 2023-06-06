@@ -41,7 +41,7 @@ def node_distribution(dt: DecisionTreeClassifier, dataset: pd.DataFrame, target_
     dataset['node_id'] = pred_node_ids
 
     #target columns should be set to string, to ensure proper mapping in sample_from_pmf
-    dataset['target'] = dataset['target'].astype(str)
+    dataset[target_col] = dataset[target_col].astype(str)
 
     #convert into dictionary:
     #keys are node ids, values are dictionaries of {target_val: pmf probability}

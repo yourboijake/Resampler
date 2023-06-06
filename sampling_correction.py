@@ -45,6 +45,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import GridSearchCV
 from utils import *
 from functools import reduce
+from collections import Counter
 
 class Resampler:
     def __init__(self, target_dataset: pd.DataFrame = None, reference_dataset: pd.DataFrame = None) -> None:
@@ -52,11 +53,12 @@ class Resampler:
 
     def train_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list) -> None:
         #train initial decision tree using grid search CV
-        param_grid = {"max_depth": [5, None],
+        param_grid = {"max_depth": [10, None],
                       "min_impurity_decrease": [0.0, 0.2]}
         tree = GridSearchCV(DecisionTreeClassifier(), param_grid)
         tree.fit(dataset[reference_cols], dataset[target_col])
         self.dt = tree.best_estimator_
+        self.best_params = tree.best_params_
 
         #obtain probability mass functions of leaf nodes
         self.leaf_node_pmfs = node_distribution(self.dt, dataset, target_col, reference_cols)
@@ -67,11 +69,14 @@ class Resampler:
         self.end_impurity = end_impurity
         print('starting Gini impurity:', start_impurity)
         print('ending Gini impurity:', end_impurity)
-        print("mean accuracy of resulting DTC on full dataset:", self.df.score(dataset[reference_cols], dataset[target_col]))
+        print("mean accuracy of resulting DTC on full dataset:", self.dt.score(dataset[reference_cols], dataset[target_col]))
+    
+    def get_best_grid_search_params(self):
+        return self.best_params
 
     def evaluate_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list) -> tuple:
         start_impurity = impurity_from_pd_series(dataset[target_col])
-        end_impurity = impurity_full_dt(self.tree, dataset, reference_cols)
+        end_impurity = impurity_full_dt(self.dt, dataset, reference_cols)
 
         return start_impurity, end_impurity
     
@@ -96,10 +101,13 @@ class Resampler:
     def monte_carlo_from_dataset(self, reference_dataset: pd.DataFrame, orig_reference_cols: list, iterations: int = 100) -> tuple:
         prob_df_list = []
         for i in range(iterations):
-            prob_df = self.resample_from_dataset(reference_dataset, orig_reference_cols)['pred_target'].value_counts().reset_index()
-            prob_df_list.append(prob_df)
+            prob_dictionary = dict(self.resample_from_dataset(reference_dataset, orig_reference_cols)['pred_target'].value_counts(normalize=True))
+            #prob_coll = Counter(prob_dictionary)
+            prob_df_list.append(prob_dictionary)
         
-        prob_df_merge = reduce(lambda left, right: pd.merge(left , right, on = ["index"], how = "outer"), data_list)
+        return prob_df_list
+        
+        prob_df_final = reduce(lambda left, right: left + right, prob_df_list)
         prob_df_merge = prob_df_merge.T
         prob_df_merge_mean = prob_df_merge.mean()
         prob_df_merge_std = prob_df_merge.std()
