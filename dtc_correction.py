@@ -53,7 +53,7 @@ class Resampler:
 
     def train_dt(self, dataset: pd.DataFrame, target_col: str, reference_cols: list) -> None:
         #train initial decision tree using grid search CV
-        param_grid = {"max_depth": [10, None],
+        param_grid = {"max_depth": [5, 10],
                       "min_impurity_decrease": [0.0, 0.2]}
         tree = GridSearchCV(DecisionTreeClassifier(), param_grid)
         tree.fit(dataset[reference_cols], dataset[target_col])
